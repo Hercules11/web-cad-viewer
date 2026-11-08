@@ -7,7 +7,13 @@ import { screenToWorld, zoomAt, zoomExtents } from './view';
 import type { Doc, Rect } from './document';
 import { AddCommand, DeleteCommand, MoveCommand, type UndoStack } from './commands';
 import { findSnap } from './snapping';
+import { aciToRgb } from '../core/aci';
 import type { EntRecord } from '../core/types';
+
+/** 兜底: 无主题解析器时按深色主题取色 */
+function aciFallback(aci: number): number {
+  return aciToRgb(aci, true);
+}
 
 export type ToolId = 'select' | 'pan' | 'line' | 'pline' | 'circle' | 'arc' | 'rect' | 'export';
 
@@ -420,14 +426,39 @@ export class Tools {
 
   // ---------- 提交绘制 ----------
   private curLayer = 0;
+  /** 新绘颜色: 'bylayer' 跟随图层, 或显式 ACI */
+  drawColorMode: 'bylayer' | 'aci' = 'bylayer';
+  drawAci = 7;
+  /** 主题感知的颜色解析器 (main 注入) */
+  colorResolver: ((aci: number) => number) | null = null;
 
   setDrawLayer(layer: number): void {
     this.curLayer = layer;
   }
 
+  getDrawLayer(): number {
+    return this.curLayer;
+  }
+
+  setDrawColor(mode: 'bylayer' | 'aci', aci: number): void {
+    this.drawColorMode = mode;
+    this.drawAci = aci;
+  }
+
+  /** 解析当前绘制颜色: BYLAYER 跟随图层色, 显式色随主题反转 */
+  private resolveDrawColor(): { color: number; aci: number } {
+    if (this.drawColorMode === 'bylayer') {
+      const layer = this.doc.layers[this.curLayer];
+      return { color: layer?.rgb ?? 0xffffff, aci: layer?.color ?? 7 };
+    }
+    const color = this.colorResolver ? this.colorResolver(this.drawAci) : aciFallback(this.drawAci);
+    return { color, aci: this.drawAci };
+  }
+
   private commitLine(x1: number, y1: number, x2: number, y2: number): void {
+    const { color, aci } = this.resolveDrawColor();
     const rec: EntRecord = {
-      id: allocId(), type: 'LINE', layer: this.curLayer, color: 0xffffff, lt: -1, sp: this.space, aci: 7,
+      id: allocId(), type: 'LINE', layer: this.curLayer, color, lt: -1, sp: this.space, aci,
       bb: { x1: Math.min(x1, x2), y1: Math.min(y1, y2), x2: Math.max(x1, x2), y2: Math.max(y1, y2) },
       d: [x1, y1, x2, y2],
     };
@@ -436,6 +467,7 @@ export class Tools {
 
   private commitPline(pts: [number, number][], closed: boolean): void {
     if (pts.length < 2) return;
+    const { color, aci } = this.resolveDrawColor();
     const v = new Float32Array(pts.length * 2);
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (let i = 0; i < pts.length; i++) {
@@ -444,7 +476,7 @@ export class Tools {
       maxX = Math.max(maxX, pts[i][0]); maxY = Math.max(maxY, pts[i][1]);
     }
     const rec: EntRecord = {
-      id: allocId(), type: 'PLINE', layer: this.curLayer, color: 0xffffff, lt: -1, sp: this.space, aci: 7,
+      id: allocId(), type: 'PLINE', layer: this.curLayer, color, lt: -1, sp: this.space, aci,
       bb: { x1: minX, y1: minY, x2: maxX, y2: maxY },
       d: { v, closed },
     };
@@ -452,8 +484,9 @@ export class Tools {
   }
 
   private commitCircle(cx: number, cy: number, r: number): void {
+    const { color, aci } = this.resolveDrawColor();
     const rec: EntRecord = {
-      id: allocId(), type: 'CIRCLE', layer: this.curLayer, color: 0xffffff, lt: -1, sp: this.space, aci: 7,
+      id: allocId(), type: 'CIRCLE', layer: this.curLayer, color, lt: -1, sp: this.space, aci,
       bb: { x1: cx - r, y1: cy - r, x2: cx + r, y2: cy + r },
       d: [cx, cy, r],
     };
@@ -461,8 +494,9 @@ export class Tools {
   }
 
   private commitArc(cx: number, cy: number, r: number, a0: number, a1: number): void {
+    const { color, aci } = this.resolveDrawColor();
     const rec: EntRecord = {
-      id: allocId(), type: 'ARC', layer: this.curLayer, color: 0xffffff, lt: -1, sp: this.space, aci: 7,
+      id: allocId(), type: 'ARC', layer: this.curLayer, color, lt: -1, sp: this.space, aci,
       bb: { x1: cx - r, y1: cy - r, x2: cx + r, y2: cy + r },
       d: [cx, cy, r, a0, a1],
     };

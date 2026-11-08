@@ -212,6 +212,43 @@ body {
 .dlg-btns button.primary { background: #0e5a8a; border-color: #1a76b8; }
 .dlg-info { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
 
+/* ---------- 绘制颜色选择器 ---------- */
+.cpy-wrap { position: relative; flex-shrink: 0; }
+.cpy-cur {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 1px solid #888;
+  border-radius: 3px;
+  background: #fff;
+}
+.cpy-panel {
+  position: absolute;
+  top: 34px; left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  display: none;
+  z-index: 80;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.cpy-panel.open { display: block; }
+.cpy-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 4px;
+  cursor: pointer; font-size: 12px; margin-bottom: 8px;
+}
+.cpy-row:hover { background: var(--panel2); }
+.cpy-grid { display: grid; grid-template-columns: repeat(6, 24px); gap: 7px; }
+.cpy-sw {
+  width: 24px; height: 24px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  cursor: pointer;
+}
+.cpy-sw:hover { outline: 2px solid var(--accent); }
+.cpy-sw.active { outline: 2px solid var(--accent); }
+
 /* drag-over hint */
 #canvasWrap.dragover::after {
   content: "松开以打开 DWG 文件";

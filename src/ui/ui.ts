@@ -127,6 +127,96 @@ export function buildToolbar(cb: ToolbarCallbacks): ToolbarHandles {
   };
 }
 
+// ---------- 绘制颜色选择器 ----------
+export interface ColorPickerHandles {
+  el: HTMLElement;
+  refresh(): void;
+}
+
+const PICKER_ACIS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 30, 140, 250];
+
+/**
+ * 新绘颜色选择器: BYLAYER (跟随图层) + 常用 ACI 色板
+ */
+export function buildColorPicker(
+  layerInfo: () => { rgb: number; name: string } | null,
+  aciHex: (aci: number) => string,
+  onSelect: (mode: 'bylayer' | 'aci', aci: number) => void,
+): ColorPickerHandles {
+  const wrap = document.createElement('div');
+  wrap.className = 'cpy-wrap';
+  let mode: 'bylayer' | 'aci' = 'bylayer';
+  let curAci = 7;
+
+  const btn = document.createElement('button');
+  btn.className = 'tb-btn';
+  btn.title = '新绘元素颜色 (BYLAYER 跟随图层, 或显式选色)';
+  const swatch = document.createElement('span');
+  swatch.className = 'cpy-cur';
+  const label = document.createElement('span');
+  label.textContent = '随层';
+  btn.append(swatch, label);
+
+  const panel = document.createElement('div');
+  panel.className = 'cpy-panel';
+  const bylayerRow = document.createElement('div');
+  bylayerRow.className = 'cpy-row';
+  const bySw = document.createElement('span');
+  bySw.className = 'cpy-swatch';
+  const byTx = document.createElement('span');
+  byTx.textContent = 'BYLAYER · 跟随图层颜色';
+  bylayerRow.append(bySw, byTx);
+  bylayerRow.addEventListener('click', () => {
+    mode = 'bylayer';
+    panel.classList.remove('open');
+    onSelect('bylayer', 7);
+  });
+  const grid = document.createElement('div');
+  grid.className = 'cpy-grid';
+  for (const aci of PICKER_ACIS) {
+    const sw = document.createElement('div');
+    sw.className = 'cpy-sw';
+    sw.dataset.aci = String(aci);
+    sw.title = `ACI ${aci}`;
+    sw.addEventListener('click', () => {
+      mode = 'aci';
+      curAci = aci;
+      panel.classList.remove('open');
+      onSelect('aci', aci);
+    });
+    grid.appendChild(sw);
+  }
+  panel.append(bylayerRow, grid);
+  wrap.append(btn, panel);
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    panel.classList.toggle('open');
+  });
+  document.addEventListener('click', () => panel.classList.remove('open'));
+
+  const refresh = (): void => {
+    if (mode === 'bylayer') {
+      const info = layerInfo();
+      const rgb = info?.rgb ?? 0xffffff;
+      swatch.style.background = '#' + rgb.toString(16).padStart(6, '0');
+      label.textContent = `随层 · ${info?.name ?? '0'}`;
+    } else {
+      swatch.style.background = aciHex(curAci);
+      label.textContent = `ACI ${curAci}`;
+    }
+    bySw.style.background = '#' + (layerInfo()?.rgb ?? 0xffffff).toString(16).padStart(6, '0');
+    for (const sw of Array.from(grid.children)) {
+      const aci = +((sw as HTMLElement).dataset.aci ?? '7');
+      (sw as HTMLElement).style.background = aciHex(aci);
+      (sw as HTMLElement).classList.toggle('active', mode === 'aci' && aci === curAci);
+    }
+  };
+  refresh();
+
+  return { el: wrap, refresh };
+}
+
 // ---------- 图层面板 ----------
 export interface LayersPanelHandles {
   el: HTMLElement;
@@ -257,6 +347,7 @@ export interface ExportDialogOpts {
   includeInvisible: boolean;
   background: 'white' | 'transparent';
   patternFill: boolean;
+  mono: boolean;
 }
 
 export function showExportDialog(
@@ -275,6 +366,7 @@ export function showExportDialog(
       <div class="dlg-row"><label>背景</label><select id="edBg"><option value="white">白色</option><option value="transparent">透明</option></select></div>
       <div class="dlg-row"><label>包含隐藏图层</label><input type="checkbox" id="edInv" ${defaults.includeInvisible ? 'checked' : ''}></div>
       <div class="dlg-row"><label>图案填充半透明</label><input type="checkbox" id="edPat" ${defaults.patternFill ? 'checked' : ''}></div>
+      <div class="dlg-row"><label>黑白输出 (单色)</label><input type="checkbox" id="edMono" ${defaults.mono ? 'checked' : ''}></div>
       <div class="dlg-btns">
         <button id="edCancel">取消</button>
         <button id="edOk" class="primary">导出</button>
@@ -292,6 +384,7 @@ export function showExportDialog(
       includeInvisible: (mask.querySelector('#edInv') as HTMLInputElement).checked,
       background: (mask.querySelector('#edBg') as HTMLSelectElement).value as 'white' | 'transparent',
       patternFill: (mask.querySelector('#edPat') as HTMLInputElement).checked,
+      mono: (mask.querySelector('#edMono') as HTMLInputElement).checked,
     };
     mask.remove();
     onConfirm(opts);

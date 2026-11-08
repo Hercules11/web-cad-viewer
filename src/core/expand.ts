@@ -20,7 +20,9 @@ export interface ExpandAcc {
 
 export type BlocksMap = Map<string, { bx: number; by: number; records: EntRecord[] }>;
 
-let idSeq = 100_000_000; // 共享 id 池 (主线程新增实体用, 避免与解析 id 冲突)
+// id 池: worker (100M+) 与主线程编辑 (1G+) 分段, 避免相互覆盖
+const ID_BASE = typeof window === 'undefined' ? 100_000_000 : 1_000_000_000;
+let idSeq = ID_BASE;
 export const allocId = () => idSeq++;
 
 export function pushSegs(sink: ExpandSink, pts: number[], id: number, rgb: number, close: boolean, aci = 7): void {

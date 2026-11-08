@@ -8,6 +8,8 @@ export interface SvgExportOpts {
   background: 'white' | 'transparent';
   /** 图案填充: true=半透明填充, false=仅边界 */
   patternFill: boolean;
+  /** 黑白输出: 所有颜色压成黑色 (对应单色出图) */
+  mono: boolean;
 }
 
 export interface SvgExportResult {
@@ -78,8 +80,7 @@ export function exportSvg(doc: Doc, space: number, rect: Rect, opts: SvgExportOp
   const body: string[] = [];
   const emitEntity = (rec: EntRecord, out: string[], isDef: boolean): void => {
     if (!isDef && !opts.includeInvisible && !doc.layerVisible[rec.layer]) return;
-    const rgb = remapColor(rec.color);
-    const col = hex(rgb);
+    const col = opts.mono ? '#000000' : hex(remapColor(rec.color));
     const opRaw = (rec.alpha ?? 255) / 255;
     const d = rec.d as never;
     if (opRaw < 1) out.push(`<g opacity="${opRaw.toFixed(3)}">`);

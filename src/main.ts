@@ -11,7 +11,7 @@ import { exportSvg } from './export/svgExport';
 import { aciToRgb, aciThemeRgb } from './core/aci';
 import type { EntRecord } from './core/types';
 import {
-  buildLayersPanel, buildProgress, buildStatusBar, buildToolbar, showExportDialog, showTip,
+  buildColorPicker, buildLayersPanel, buildProgress, buildStatusBar, buildToolbar, showExportDialog, showTip,
 } from './ui/ui';
 import type { DrawMeta, WorkerOut } from './core/types';
 
@@ -77,6 +77,7 @@ const layers = buildLayersPanel(doc, (idx, visible) => {
   }
 }, (idx) => {
   tools.setDrawLayer(idx);
+  colorPicker.refresh();
   status.setStatus(`绘制图层: ${doc.layers[idx]?.name ?? idx}`);
 });
 
@@ -102,6 +103,30 @@ const toolbar = buildToolbar({
   onSnapToggle: () => { /* 由 snap 按钮点击处理 */ },
   onToggleTheme: () => applyTheme(!themeDark),
 });
+
+// ---------- 主题 ----------
+// ---------- 主题 ----------
+let themeDark = localStorage.getItem('cad-theme') !== 'light';
+
+// ---------- 新绘颜色选择器 ----------
+const aciToCss = (aci: number): string =>
+  '#' + aciThemeRgb(aci, aciToRgb(aci, themeDark), themeDark).toString(16).padStart(6, '0');
+const colorPicker = buildColorPicker(
+  () => {
+    const l = doc.layers[tools.getDrawLayer()];
+    return l ? { rgb: l.rgb, name: l.name } : null;
+  },
+  aciToCss,
+  (mode, aci) => {
+    tools.setDrawColor(mode, aci);
+    colorPicker.refresh();
+    status.setStatus(mode === 'bylayer'
+      ? `新绘颜色: 随图层 (${doc.layers[tools.getDrawLayer()]?.name ?? '0'})`
+      : `新绘颜色: ACI ${aci}`);
+  },
+);
+tools.colorResolver = (aci) => aciThemeRgb(aci, aciToRgb(aci, themeDark), themeDark);
+toolbar.el.appendChild(colorPicker.el);
 toolbar.setUndoRedo(false, false);
 toolbar.setDeleteEnabled(false);
 
@@ -111,8 +136,6 @@ document.querySelector('[data-tool="snap"')?.addEventListener('click', () => {
   toolbar.setSnap(tools.snapEnabled);
 });
 
-// ---------- 主题 ----------
-let themeDark = localStorage.getItem('cad-theme') !== 'light';
 
 function applyTheme(dark: boolean): void {
   themeDark = dark;
@@ -131,6 +154,7 @@ function applyTheme(dark: boolean): void {
     l.rgb = aciThemeRgb(l.color, aciToRgb(l.color, dark), dark);
   }
   layers.render();
+  colorPicker.refresh();
   toolbar.setThemeDark(dark);
   status.setStatus(dark ? '深色主题 (ACI 7 显示为白色)' : '浅色主题 (ACI 7 显示为黑色, 仿 TrueView)');
 }
@@ -338,7 +362,7 @@ canvasWrap.addEventListener('drop', (e) => {
 });
 
 // ---------- 导出 ----------
-const exportDefaults = { decimals: 2, includeInvisible: false, background: 'white' as const, patternFill: true };
+const exportDefaults = { decimals: 2, includeInvisible: false, background: 'white' as const, patternFill: true, mono: false };
 
 function openExportDialog(rect: Rect): void {
   const candidates = doc.queryRect(doc.activeSpace, rect);
@@ -413,5 +437,5 @@ window.__cad = {
   exportRegion: (x1: number, y1: number, x2: number, y2: number, opts?: Record<string, unknown>) =>
     exportSvg(doc, doc.activeSpace,
       { x1, y1, x2, y2 },
-      { decimals: 2, includeInvisible: false, background: 'white', patternFill: true, ...(opts ?? {}) }),
+      { decimals: 2, includeInvisible: false, background: 'white', patternFill: true, mono: false, ...(opts ?? {}) }),
 };
