@@ -1,0 +1,25 @@
+{
+  "name": "web-cad-viewer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mlightcad/libredwg-web": "^0.8.7",
+    "earcut": "^3.0.1",
+    "flatbush": "^4.4.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@esbuild/win32-x64": "^0.28.2",
+    "@types/earcut": "^2.1.4",
+    "@types/three": "^0.180.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0"
+  }
+}

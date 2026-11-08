@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web CAD 查看器</title>
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar"></div>
+    <div id="main">
+      <div id="layersPanel" class="hidden"></div>
+      <div id="canvasWrap">
+        <canvas id="cadCanvas"></canvas>
+        <div id="progressOverlay" class="hidden">
+          <div class="progress-card">
+            <div id="progressTitle">正在打开文件…</div>
+            <div class="progress-bar"><div id="progressFill"></div></div>
+            <div id="progressDetail"></div>
+          </div>
+        </div>
+        <div id="spaceTabs" class="hidden"></div>
+        <div id="marqueeTip" class="hidden">拖拽框选导出区域，右键/ESC 取消</div>
+      </div>
+    </div>
+    <div id="statusBar"></div>
+  </div>
+  <input type="file" id="fileInput" accept=".dwg,.dxf" hidden />
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
